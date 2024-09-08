@@ -39,29 +39,69 @@ function createElement(type,props,...children){
             children:children.map(child =>
                 typeof child === 'object'
                 ? child
-                : createTextElement(child)
+                : createTextNode(child)
             )
         }
     }
 }
-function createTextElement(text){
+function createTextNode(text, ...children){
     return {
         type:'TEXT_ELEMENT',
         props:{
             nodeValue:text,
-            children:[]
+            children,
         }
     }
 }
 
-const textEl = createTextElement('app');
-const App = createElement('div',{id:'app'},textEl);
+// const textEl = createTextElement('app');
+// const App = createElement('div',{id:'app'},textEl);
 
-const dom = document.createElement(App.type);
-dom.id = App.props.id;
-document.querySelector('#root').append(dom);
+// const dom = document.createElement(App.type);
+// dom.id = App.props.id;
+// document.querySelector('#root').append(dom);
 
-const textNode = document.createTextNode('');
-textNode.nodeValue = textEl.props.nodeValue;
-dom.appendChild(textNode);
+// const textNode = document.createTextNode('');
+// textNode.nodeValue = textEl.props.nodeValue;
+// dom.appendChild(textNode);
 
+
+// 处理el.props和el.children时， 需要分开处理，使用递归的方式，实现render
+function render(el,container){
+    const dom = el.type === 'Text_ELEMENT' ? document.createTextNode('') : document.createElement(el.type);
+
+    //设置id和class
+    Object.keys(el.props).forEach(key=>{
+        if(key !== 'children') {
+            //给DOM创建props
+            dom[key] = el.props[key];
+        }
+    })
+
+    const children = el.props.children || [];
+    children.forEach(child => render(child,dom));
+    container.append(dom)
+}
+
+const textE1 = createTextNode('app');
+// const App = createElement('div',{id:'app'},textE1);
+const App = createElement('div',{id:'app'},'hi-', 'mini-react');
+// render(App,document.querySelector('#root'));
+
+
+console.log(App)
+
+const ReactDOM = {
+    creatRoot(container) {
+        return {
+            render(el) {
+                render(el,container)
+            }
+        }
+    }
+}
+
+ReactDOM.creatRoot(document.querySelector('#root')).render(App);
+
+
+console.log(ReactDOM)
