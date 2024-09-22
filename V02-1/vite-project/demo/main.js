@@ -9,7 +9,7 @@
 
 // V2
 // const textEl = {
-//     type:"Text_ELEMENT",
+//     type:"TEXT_ELEMENT",
 //     props: {
 //         nodeValue:'app',
 //         children:[]
@@ -68,7 +68,7 @@ function createTextNode(text, ...children){
 
 // 处理el.props和el.children时， 需要分开处理，使用递归的方式，实现render
 function render(el,container){
-    const dom = el.type === 'Text_ELEMENT' ? document.createTextNode('') : document.createElement(el.type);
+    const dom = el.type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(el.type);
 
     //设置id和class
     Object.keys(el.props).forEach(key=>{

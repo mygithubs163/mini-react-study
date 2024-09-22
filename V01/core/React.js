@@ -4,11 +4,9 @@ function createElement(type,props,...children){
         type,
         props:{
             ...props,
-            children:children.map(child =>
-                typeof child === 'object'
-                ? child
-                : createTextNode(child)
-            )
+            children:children.map(child =>{
+                return typeof child === 'string' ? createTextNode(child) : child ;
+            })
         }
     }
 }
@@ -24,7 +22,7 @@ function createTextNode(text, ...children){
 
 // 处理el.props和el.children时， 需要分开处理，使用递归的方式，实现render
 function render(el,container){
-    const dom = el.type === 'Text_ELEMENT' ? document.createTextNode('') : document.createElement(el.type);
+    const dom = el.type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(el.type);
 
     //设置id和class
     Object.keys(el.props).forEach(key=>{
@@ -34,8 +32,10 @@ function render(el,container){
         }
     })
 
-    const children = el.props.children || [];
-    children.forEach(child => render(child,dom));
+    const children = el.props.children;
+    children.forEach(child => {
+        render(child,dom)
+    });
     container.append(dom)
 }
 
