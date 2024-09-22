@@ -7,11 +7,11 @@ function createElement(type,props,...children){
         type,
         props:{
             ...props,
-            children:children.map(child =>{
+            children: children.map(child =>{
                 const testNode  = typeof child === 'string' || typeof child === 'number'
                 return testNode ? createTextNode(child) : child ;
-            })
-        }
+            }),
+        },
     }
 }
 function createTextNode(text){
@@ -29,51 +29,61 @@ function createTextNode(text){
     中途有可能没空余时间，用户会看到渲染一半的DOM
     计算结束后统一添加到屏幕里面
 **/
-let root = null;
+ 
 // 处理el.props和el.children时， 需要分开处理，使用递归的方式，实现render
-function render(el,container){
-    nextwork = {
+function render(el, container){
+    wipRoot = {
         dom: container,
         props: {
             children: [el],
         }
     }
-    root = nextwork;
+    nextWorkOfUnit = wipRoot;
 }
 
 // 当前的任务
-let nextwork = null;
+let wipRoot = null; // 正在工作中的根节点
+let nextWorkOfUnit = null; // 下一个工作单元
+let currentRoot = null; // 旧节点
 function workLoop(deadline){
     let shouldYield  = false;
-    while(!shouldYield && nextwork) {
+    while(!shouldYield && nextWorkOfUnit) {
         //执行dom
-        nextwork = performUnitOfWork(nextwork);
-        console.log("nextWork", nextwork);
+        nextWorkOfUnit = performUnitOfWork(nextWorkOfUnit);
+        // console.log("nextWorkOfUnit", nextWorkOfUnit);
 
         shouldYield = deadline.timeRemaining() < 1;
     }
     //只需要执行一次
-    if(!nextwork && root) {
+    if(!nextWorkOfUnit && wipRoot) {
         commitRoot();
     }
     requestIdleCallback(workLoop)
 }
 
+// wipRoot会清空, currentRoot记录当前的最新的
 function commitRoot(){
-    commitWork(root.child);
-    root = null;
+    commitWork(wipRoot.child);
+    currentRoot = wipRoot;
+    wipRoot = null;
 }
 
 function commitWork(fiber){
     if (!fiber) return;
+
     let fiberParent = fiber.parent;
     while (!fiberParent.dom) {
         fiberParent = fiberParent.parent;
     }
 
-    if (fiber.dom) {
-        fiberParent.dom.append(fiber.dom)
+    if (fiber.effectTag ==='update') {
+        updateProps(fiber.dom, fiber.props, fiber.alternate?.props);
+    } else if (fiber.effectTag === 'placement') {
+        if (fiber.dom) {
+            fiberParent.dom.append(fiber.dom)
+        }
     }
+    
     commitWork(fiber.child);
     commitWork(fiber.sibling);
 }
@@ -82,31 +92,93 @@ function createDom(type) {
  return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type)
 }
 
-function updateProps(dom, props){
-    Object.keys(props).forEach(key => {
+function updateProps(dom, nextProps, prevProps){
+    // Object.keys(props).forEach(key => {
+    //     if (key !== 'children') {
+    //         // 是否是on开头的，取出后面的事件名，并且是小写，然后去绑定到dom上
+    //         if(key.startsWith('on')) {
+    //             const eventType = key.slice(2).toLowerCase(); 
+    //             dom.addEventListener(eventType, props[key]);
+    //         } else {
+    //             // 给dom创建props
+    //             dom[key] = props[key];
+
+    //         }
+    //         // 给dom创建props
+    //         dom[key] = props[key];
+    //     }
+    // });
+
+    // {id: "1"} {}
+    // 1.old 有 new 没有 删除
+    Object.keys(prevProps).forEach(key => {
         if (key !== 'children') {
-            // 给dom创建props
-            dom[key] = props[key];
+            if (!(key in nextProps)) {
+                dom.removeAttribute(key);
+            }
         }
-    });
+    })
+    // 2.new 有 old 没有 添加
+    // 3.new 有 old 也有 更新
+    Object.keys(nextProps).forEach(key => {
+        if (key !== 'children') {
+            if (nextProps[key] !== prevProps[key]) {
+                if (key.startsWith('on')) {
+                    const eventType = key.slice(2).toLowerCase();
+
+                    dom.removeEventListener(eventType, prevProps[key]);
+
+                    dom.addEventListener(eventType, nextProps[key]);
+                } else {
+                    dom[key] = nextProps[key];
+                }
+            }
+        }
+    })
 }
 
 // 这里是判断的是否是函数，
 // 如果是函数就是函数组件，函数组件的话，我们是不需要去创建DOM的,并且我们是需要的children类型是数组,所以我们用[]去包裹一下,并且使用我们传入的children
-function initChildren(fiber, children) {
+function reconcileChildren(fiber, children) {
 //  const children = fiber.props.children;
+//  console.log('fiber',fiber);
+//  存储旧节点
+ let oldFiber = fiber.alternate?.child;
  let prevChild = null;
  children.forEach((child, index) => {
-    const newFiber = {
-        type: child.type,
-        props: child.props,
-        child: null,
-        parent: fiber,
-        sibling: null, 
-        dom: null,
+    const isSameType = oldFiber && oldFiber.type === child.type;
+
+    let newFiber;
+    if (isSameType) {
+        // update
+        newFiber = {
+            type: child.type,
+            props: child.props,
+            child: null,
+            parent: fiber,
+            sibling: null,
+            dom: oldFiber.dom,
+            effectTag: 'update',
+            alternate: oldFiber,
+        };
+    } else {
+        // placement
+        newFiber = {
+            type: child.type,
+            props: child.props,
+            child: null,
+            parent: fiber,
+            sibling: null, 
+            dom: null,
+            effectTag: 'placement',
+        };
     }
 
-    if(index  === 0) {
+    if (oldFiber) {
+        oldFiber = oldFiber.sibling;
+    }
+
+    if(index === 0) {
         fiber.child = newFiber;
     } else {
         prevChild.sibling  = newFiber;
@@ -118,8 +190,10 @@ function initChildren(fiber, children) {
 
 //函数组件
 function updateFunctionComponent(fiber) {
+    // console.log('updateFunctionComponent',fiber)
     const children = [fiber.type(fiber.props)];
-    initChildren(fiber, children);
+
+    reconcileChildren(fiber, children);
 }
 
 //非函数组件
@@ -132,15 +206,16 @@ function updateHostComponent(fiber) {
 
         // 处理props
         // 设置id和class
-        updateProps(dom, fiber.props)
+        updateProps(dom, fiber.props, {})
     }
 
     const children = fiber.props.children;
-    initChildren(fiber, children);
+    reconcileChildren(fiber, children);
 }
 
 function performUnitOfWork(fiber){
     const isFunctionComponent = typeof fiber.type === 'function';
+    
     if (isFunctionComponent) {
         updateFunctionComponent(fiber);
     } else {
@@ -162,13 +237,13 @@ function performUnitOfWork(fiber){
 //     const children = isFunctionComponent ? [fiber.type(fiber.props)]: fiber.props.children;
     
 //     // 处理节点之间的关系
-//    initChildren(fiber, children);
+//    reconcileChildren(fiber, children);
 
     // 返回下一个要执行的任务
     if(fiber.child) {
         return fiber.child;
     }
-    console.log(fiber)
+    // console.log(fiber)
     // if(fiber.sibling){
     //     return fiber.sibling;
     // }
@@ -188,8 +263,19 @@ function performUnitOfWork(fiber){
 
 requestIdleCallback(workLoop)
 
+// 在绑定事件之前需要先清空一下
+function update() {
+    wipRoot = {
+        dom: currentRoot.dom,
+        props: currentRoot.props,
+        alternate: currentRoot,
+    }
+    nextWorkOfUnit = wipRoot;
+}
+
 
 const React = {
+    update,
     render,
     createElement,
 }
