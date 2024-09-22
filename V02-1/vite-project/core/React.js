@@ -8,6 +8,7 @@ function createElement(type,props,...children){
         props:{
             ...props,
             children: children.map(child =>{
+                // console.log('child',child)
                 const testNode  = typeof child === 'string' || typeof child === 'number'
                 return testNode ? createTextNode(child) : child ;
             }),
@@ -45,12 +46,18 @@ function render(el, container){
 let wipRoot = null; // 正在工作中的根节点
 let nextWorkOfUnit = null; // 下一个工作单元
 let currentRoot = null; // 旧节点
+let deletions = []; // 需要删除的节点集合
+let wipFiber = null; // 正在工作中的fiber
 function workLoop(deadline){
     let shouldYield  = false;
     while(!shouldYield && nextWorkOfUnit) {
         //执行dom
         nextWorkOfUnit = performUnitOfWork(nextWorkOfUnit);
         // console.log("nextWorkOfUnit", nextWorkOfUnit);
+
+        if (wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
+            nextWorkOfUnit = undefined
+        }
 
         shouldYield = deadline.timeRemaining() < 1;
     }
@@ -61,11 +68,25 @@ function workLoop(deadline){
     requestIdleCallback(workLoop)
 }
 
+
 // wipRoot会清空, currentRoot记录当前的最新的
 function commitRoot(){
+    deletions.forEach(commitDeletion);
     commitWork(wipRoot.child);
     currentRoot = wipRoot;
     wipRoot = null;
+    deletions = [];
+}
+function commitDeletion(fiber){
+    if (fiber.dom) {
+        let fiberParent = fiber.parent;
+        while (!fiberParent.dom) {
+            fiberParent = fiberParent.parent;
+        }
+        fiberParent.dom.removeChild(fiber.dom);
+    } else {
+        commitDeletion(fiber.child);
+    }
 }
 
 function commitWork(fiber){
@@ -163,16 +184,28 @@ function reconcileChildren(fiber, children) {
         };
     } else {
         // placement
-        newFiber = {
-            type: child.type,
-            props: child.props,
-            child: null,
-            parent: fiber,
-            sibling: null, 
-            dom: null,
-            effectTag: 'placement',
-        };
+        // edge case child为ture的时候才去新增节点
+        if (child) {
+            newFiber = {
+                type: child.type,
+                props: child.props,
+                child: null,
+                parent: fiber,
+                sibling: null, 
+                dom: null,
+                effectTag: 'placement',
+            };
+        } 
+        
+        // 添加到删除的节点里
+        if (oldFiber){
+            deletions.push(oldFiber);
+        }
     }
+
+    // if(oldFiber){
+    //     console.log('oldFiber',oldFiber,newFiber);
+    // }
 
     if (oldFiber) {
         oldFiber = oldFiber.sibling;
@@ -183,14 +216,24 @@ function reconcileChildren(fiber, children) {
     } else {
         prevChild.sibling  = newFiber;
     }
-
-    prevChild = newFiber;
+    // edge case newFiber是否存在就好了，存在的话，再去赋值prevChild
+    if (newFiber) {
+        prevChild = newFiber;
+    }
  })
+
+    //如果还存在就删除掉
+    //可能会存在多个孩子节点，所以需要使用while循环，且更新oldFiber的值
+    while(oldFiber) {
+        deletions.push(oldFiber);
+        oldFiber = oldFiber.sibling;
+    }
 }
 
 //函数组件
 function updateFunctionComponent(fiber) {
     // console.log('updateFunctionComponent',fiber)
+    wipFiber = fiber;
     const children = [fiber.type(fiber.props)];
 
     reconcileChildren(fiber, children);
@@ -263,14 +306,26 @@ function performUnitOfWork(fiber){
 
 requestIdleCallback(workLoop)
 
+
 // 在绑定事件之前需要先清空一下
 function update() {
-    wipRoot = {
-        dom: currentRoot.dom,
-        props: currentRoot.props,
-        alternate: currentRoot,
+    // wipRoot = {
+    //     dom: currentRoot.dom,
+    //     props: currentRoot.props,
+    //     alternate: currentRoot,
+    // }
+    // nextWorkOfUnit = wipRoot;
+    let currentFiber = wipFiber;
+    // 使用闭包可以让我们在返回的函数中保留对外部函数中变量的引用，
+    // 以便在函数执行完毕后仍然能够访问和使用这些变量
+    return () => {
+        wipRoot = {
+            ...currentFiber,
+            alternate: currentFiber,
+        }
+
+        nextWorkOfUnit = wipRoot;
     }
-    nextWorkOfUnit = wipRoot;
 }
 
 
