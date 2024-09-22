@@ -147,52 +147,63 @@ import React from "./core/React.js"
 // }, [count])
 
 
-function Foo() {
-    const [count, setCount] = React.useState(10);
-    const [bar, setBar] = React.useState('bar');
-    function handleClick() {
-        // setCount(pre => pre + 2);
-        // setBar(pre => pre + 'bar');
-        setCount(c => c + 1);
-        setBar(pre => 'bar')
-    }
+// function Foo() {
+//     const [count, setCount] = React.useState(10);
+//     const [bar, setBar] = React.useState('bar');
+//     function handleClick() {
+//         // setCount(pre => pre + 2);
+//         // setBar(pre => pre + 'bar');
+//         setCount(c => c + 1);
+//         setBar(pre => 'bar')
+//     }
 
-    React.useEffect(() => {
-        console.log('init');
-        return () => {
-            console.log('clean up 0');
-        }
-    }, [])
+//     React.useEffect(() => {
+//         console.log('init');
+//         return () => {
+//             console.log('clean up 0');
+//         }
+//     }, [])
 
-    React.useEffect(() => {
-        console.log('update', count);
-        return () => {
-            console.log('clean up 1');
-        }
-    }, [count])
+//     React.useEffect(() => {
+//         console.log('update', count);
+//         return () => {
+//             console.log('clean up 1');
+//         }
+//     }, [count])
 
-    React.useEffect(() => {
-        console.log("update", count)
-        return () => {
-          console.log("cleanUp 2")
-        }
-      }, [count])
+//     React.useEffect(() => {
+//         console.log("update", count)
+//         return () => {
+//           console.log("cleanUp 2")
+//         }
+//       }, [count])
 
 
-    return (
-        <div>
-            <h1>Foo: {count}</h1>
-            <div>{bar}</div>
-            <button onClick={handleClick}>click</button>
-        </div>
-    );
-}
+//     return (
+//         <div>
+//             <h1>Foo: {count}</h1>
+//             <div>{bar}</div>
+//             <button onClick={handleClick}>click</button>
+//         </div>
+//     );
+// }
+
+// function App() {
+//     return (
+//         <div>
+//             <h1>App</h1>
+//             <Foo></Foo>
+//         </div>
+//     );
+// }
+
+import Todos from "./src/Todos.jsx";
+import './src/style.css';
 
 function App() {
     return (
         <div>
-            <h1>App</h1>
-            <Foo></Foo>
+            <Todos></Todos>
         </div>
     );
 }

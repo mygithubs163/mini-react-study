@@ -65,6 +65,12 @@ function workLoop(deadline){
     if(!nextWorkOfUnit && wipRoot) {
         commitRoot();
     }
+
+    // 在useEffect的deps为空时，当数据发生改变也需要重新渲染视图
+    if (nextWorkOfUnit && !wipRoot) {
+        wipRoot = currentRoot;
+    }
+
     requestIdleCallback(workLoop)
 }
 
@@ -152,7 +158,7 @@ function commitWork(fiber){
         fiberParent = fiberParent.parent;
     }
 
-    if (fiber.effectTag ==='update') {
+    if (fiber.effectTag ==='update' && fiber.dom) {
         updateProps(fiber.dom, fiber.props, fiber.alternate?.props);
     } else if (fiber.effectTag === 'placement') {
         if (fiber.dom) {

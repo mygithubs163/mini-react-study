@@ -1,0 +1,10 @@
+.done {
+  text-decoration: line-through;
+  font-weight: 1000;
+}
+.active {
+  color: red;
+}
+button {
+  margin-left: 10px;
+}
