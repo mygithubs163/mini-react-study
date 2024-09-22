@@ -73,10 +73,65 @@ function workLoop(deadline){
 function commitRoot(){
     deletions.forEach(commitDeletion);
     commitWork(wipRoot.child);
+    commitEffectHook();
     currentRoot = wipRoot;
     wipRoot = null;
     deletions = [];
 }
+
+// 先判断是不是初始化还是update，可以通过之前的alternate字段来判断，
+// 有值的话就是update，在更新的时候，我们需要判断deps有没有更新，有更新的话，我们才去执行callback
+function commitEffectHook(){
+    function run(fiber) {
+        if (!fiber) return;
+        if (!fiber.alternate) {
+            //初始化
+            fiber.effectHooks?.forEach(hook => {
+                hook.cleanUp = hook?.callback();
+            });
+        } else {
+            // update 需要去检测deps有没有更新
+            // const oldEffectHook = fiber.alternate.effectHook;
+
+            // const neeedUpdate= oldEffectHook?.deps.some((oldDep, index) => {
+            //     return oldDep !== fiber.effectHook?.deps[index];
+            // });
+
+            // if (neeedUpdate) {
+            //     fiber.effectHook?.callback();
+            // }
+
+            fiber.effectHooks?.forEach((newHook, index) => {
+                if (newHook.deps.length > 0) {
+                    const oldEffectHook = fiber.alternate.effectHooks[index];
+
+                    const neeedUpdate = oldEffectHook?.deps.some((oldDep, i) => {
+                        return oldDep !== newHook.deps[i];
+                    })
+
+                    neeedUpdate && (newHook.cleanUp = newHook.callback());
+                }              
+            });
+        }
+        // fiber.effectHook?.callback();
+        run(fiber.child);
+        run(fiber.sibling); 
+    }
+    function runCleanUp(fiber){
+        if (!fiber) return;
+        fiber.alternate?.effectHooks?.forEach((hook) => {
+            if (hook?.deps?.length > 0) {
+                hook?.cleanUp && hook?.cleanUp();
+            }
+        })
+        runCleanUp(fiber.child);
+        runCleanUp(fiber.sibling);
+    }
+    runCleanUp(wipRoot);
+    run(wipRoot);
+}
+
+
 function commitDeletion(fiber){
     if (fiber.dom) {
         let fiberParent = fiber.parent;
@@ -238,6 +293,8 @@ function updateFunctionComponent(fiber) {
     stateHooks = [];
     stateHooksIndex = 0;
 
+    effectHooks = [];
+
     wipFiber = fiber;
     const children = [fiber.type(fiber.props)];
 
@@ -365,14 +422,14 @@ function useState(initial) {
     stateHooks.push(stateHook);
     currentFiber.stateHook = stateHooks;
 
-    console.log('stateHook.state', stateHook.state)
+    // console.log('stateHook.state', stateHook.state)
 
     function setState(action) {
         // 处理值一样的情况
         const eagerSate = typeof action === 'function' ? action(stateHook.state) : action;
         if (eagerSate === stateHook.state) return;
 
-        
+
         // stateHook.state = action(stateHook.state);
         stateHook.queue.push(typeof action === 'function' ? action : () => action);
 
@@ -382,10 +439,27 @@ function useState(initial) {
         }
 
         nextWorkOfUnit = wipRoot;
-        console.log('setState', stateHook)
+        // console.log('setState', stateHook)
     }
     
     return [stateHook.state, setState];
+}
+
+// 定义一个effectHooks去存多个useEffect，然后放到effectHooks这个属性上，
+// 初始化的时候，应该是在初始化functionComponent上的，所以我们也加一下；
+// 然后就是处理内部了，循环effectHooks去执行里面的callback,这个流程跟useState的处理很类似
+let effectHooks
+// 调用时机应该在 React 完成对 DOM 的渲染之后
+function useEffect(callback, deps) {
+    // 首先我们存一个cleanUp属性,然后我们去执行hook的callback的时候，需要把结果放在hook的cleanUp属性上，接下来我们就可以去执行了；
+    // 我们先创建一个方法，跟run类似，我们叫做runCleanUp吧，注意我们这里只需要当deps的length大于0的时候才去执行
+    const effectHook = {
+        callback,
+        deps,
+        cleanUp: undefined,
+    }
+    effectHooks.push(effectHook);
+    wipFiber.effectHooks = effectHooks;
 }
 
 
@@ -394,6 +468,7 @@ const React = {
     render,
     createElement,
     useState,
+    useEffect,
 }
 
 export default React;

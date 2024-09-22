@@ -135,15 +135,50 @@ import React from "./core/React.js"
 //     );
 // }
 
+// useEffect
+// 调用时机是在 React 完成对 DOM 的渲染之后，并且在浏览器完成绘制之前
+// cleanUp 函数会在组件卸载的时候执行 在调用useEffect之前进行调用 ，当deps 为空的时候不会调用返回的cleanup
+// useEffect(() => {
+//     console.log('init');
+// }, [])
+
+// useEffect(() => {
+//     console.log('count init');
+// }, [count])
+
 
 function Foo() {
     const [count, setCount] = React.useState(10);
     const [bar, setBar] = React.useState('bar');
     function handleClick() {
-        setCount(pre => pre + 2);
+        // setCount(pre => pre + 2);
         // setBar(pre => pre + 'bar');
+        setCount(c => c + 1);
         setBar(pre => 'bar')
     }
+
+    React.useEffect(() => {
+        console.log('init');
+        return () => {
+            console.log('clean up 0');
+        }
+    }, [])
+
+    React.useEffect(() => {
+        console.log('update', count);
+        return () => {
+            console.log('clean up 1');
+        }
+    }, [count])
+
+    React.useEffect(() => {
+        console.log("update", count)
+        return () => {
+          console.log("cleanUp 2")
+        }
+      }, [count])
+
+
     return (
         <div>
             <h1>Foo: {count}</h1>
