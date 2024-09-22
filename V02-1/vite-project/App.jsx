@@ -23,6 +23,8 @@ import React from "./core/React.js"
 //     );
 // }
 
+
+
 // function CounterContainer() {
 //     return (
 //         <div>
@@ -42,90 +44,120 @@ import React from "./core/React.js"
 //     );
 // }
 
-let showBar = false;
-function Counter() {
-    // const foo = <div>foo</div>;
-    // const bar = <p>bar</p>;
-    // function Foo() {
-    //     return <div>foo</div>;
-    // }
 
-    // function Bar() {
-    //     return <p>bar</p>;
-    // }
+// let showBar = false;
+// function Counter() {
+//     // const foo = <div>foo</div>;
+//     // const bar = <p>bar</p>;
+//     // function Foo() {
+//     //     return <div>foo</div>;
+//     // }
 
-    // const foo = (
-    //     <div>
-    //         foo 
-    //         <div>child</div>
-    //     </div>
-    // );
-    const bar = <div>bar</div>
-    function handleShowBar() {
-        showBar = !showBar;
-        React.update();
-    }
+//     // function Bar() {
+//     //     return <p>bar</p>;
+//     // }
 
-    return (
-        <div>
-            counter
-            {showBar && bar}
-            {/* <div>{showBar && bar}</div> */}
-            <button onClick={handleShowBar}>showBar</button>
-        </div>
-    );
-}
+//     // const foo = (
+//     //     <div>
+//     //         foo 
+//     //         <div>child</div>
+//     //     </div>
+//     // );
+//     const bar = <div>bar</div>
+//     function handleShowBar() {
+//         showBar = !showBar;
+//         React.update();
+//     }
 
-let countFoo1 = 1;
+//     return (
+//         <div>
+//             counter
+//             {showBar && bar}
+//             {/* <div>{showBar && bar}</div> */}
+//             <button onClick={handleShowBar}>showBar</button>
+//         </div>
+//     );
+// }
+
+
+
+// let countFoo1 = 1;
+// function Foo() {
+//     console.log('Foo return ');
+//     const update = React.update()
+//     function handleClick() {
+//         countFoo1++;
+//         update();
+//     }
+
+//     return (
+//         <div>
+//             <h1>Foo: {countFoo1}</h1>
+//             <button onClick={handleClick}>click</button>    
+//         </div>
+//     );
+// }
+
+// let countBar2 = 1;
+// function Bar() {
+//     console.log('Bar return ');
+//     const update = React.update()
+//     function handleClick() {
+//         countBar2++;
+//         update();
+//     }
+
+//     return (
+//         <div>
+//             <h1>Bar: {countBar2}</h1>
+//             <button onClick={handleClick}>click</button>    
+//         </div>
+//     );
+// }
+
+// let countApp3 = 1;
+// function App() {
+//     console.log('App return ');
+//     const update = React.update()
+//     function handleClick() {
+//         countApp3++;
+//         update();
+//     }
+//     return (
+//         <div>
+//             {/* mini-react */}
+//             {/* <Counter></Counter> */}
+//             <h1>App: {countApp3}</h1>
+//             <button onClick={handleClick}>click</button>
+//             <Foo></Foo>
+//             <Bar></Bar>
+//         </div>
+//     );
+// }
+
+
 function Foo() {
-    console.log('Foo return ');
-    const update = React.update()
+    const [count, setCount] = React.useState(10);
+    const [bar, setBar] = React.useState('bar');
     function handleClick() {
-        countFoo1++;
-        update();
-    }
-
-    return (
-        <div>
-            <h1>Foo: {countFoo1}</h1>
-            <button onClick={handleClick}>click</button>    
-        </div>
-    );
-}
-
-let countBar2 = 1;
-function Bar() {
-    console.log('Bar return ');
-    const update = React.update()
-    function handleClick() {
-        countBar2++;
-        update();
-    }
-
-    return (
-        <div>
-            <h1>Bar: {countBar2}</h1>
-            <button onClick={handleClick}>click</button>    
-        </div>
-    );
-}
-
-let countApp3 = 1;
-function App() {
-    console.log('App return ');
-    const update = React.update()
-    function handleClick() {
-        countApp3++;
-        update();
+        setCount(pre => pre + 2);
+        // setBar(pre => pre + 'bar');
+        setBar(pre => 'bar')
     }
     return (
         <div>
-            {/* mini-react */}
-            {/* <Counter></Counter> */}
-            <h1>App: {countApp3}</h1>
+            <h1>Foo: {count}</h1>
+            <div>{bar}</div>
             <button onClick={handleClick}>click</button>
+        </div>
+    );
+}
+
+function App() {
+    return (
+        <div>
+            <h1>App</h1>
             <Foo></Foo>
-            <Bar></Bar>
         </div>
     );
 }

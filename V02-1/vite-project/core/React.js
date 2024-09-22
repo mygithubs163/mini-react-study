@@ -233,6 +233,11 @@ function reconcileChildren(fiber, children) {
 //函数组件
 function updateFunctionComponent(fiber) {
     // console.log('updateFunctionComponent',fiber)
+
+    // 每次更新后，需要把值清空
+    stateHooks = [];
+    stateHooksIndex = 0;
+
     wipFiber = fiber;
     const children = [fiber.type(fiber.props)];
 
@@ -329,10 +334,66 @@ function update() {
 }
 
 
+// 首先获取当前的Fiber节点currentFiber，然后尝试获取之前的钩子状态oldHook，
+// 如果存在的话。接着创建一个stateHook对象，其中的state属性被初始化为之前的状态或者初始值initial。
+// 然后将stateHook对象赋值给currentFiber的stateHook属性。
+// 接下来定义了setState函数，它接受一个action作为参数，这个action是一个函数，用于根据当前状态计算新的状态。
+// 在setState函数内部，就是之前的update函数了。
+// 最后，useState函数返回一个数组，其中第一个元素是状态的当前值，第二个元素是setState函数，用于更新状态。
+
+// 通过设置stateHooks变量去存储stateHook,并且设置stateHookIndex索引来获取老的值，这样就不会影响下次更新了
+let stateHooks
+let stateHooksIndex
+function useState(initial) {
+    let currentFiber = wipFiber;
+    let oldHook = currentFiber.alternate?.stateHook[stateHooksIndex];
+
+    const stateHook = {
+        state: oldHook ? oldHook.state : initial,
+        queue: oldHook ? oldHook.queue : [],
+    }
+    // 调用action
+    // 批量执行 action
+    // 加入queue来存储action，并循环去执行action，这样就实现了把多次action的操作，转化成一次去执行。
+    // 判断action的类型，如果不是函数，那么我们就包装成一个函数，这样我们就实现了直接输入值的情况。
+    stateHook.queue.forEach(action => {
+        stateHook.state = action(stateHook.state);
+    })
+    stateHook.queue = [];
+
+    stateHooksIndex++;
+    stateHooks.push(stateHook);
+    currentFiber.stateHook = stateHooks;
+
+    console.log('stateHook.state', stateHook.state)
+
+    function setState(action) {
+        // 处理值一样的情况
+        const eagerSate = typeof action === 'function' ? action(stateHook.state) : action;
+        if (eagerSate === stateHook.state) return;
+
+        
+        // stateHook.state = action(stateHook.state);
+        stateHook.queue.push(typeof action === 'function' ? action : () => action);
+
+        wipRoot = {
+            ...currentFiber,
+            alternate: currentFiber,
+        }
+
+        nextWorkOfUnit = wipRoot;
+        console.log('setState', stateHook)
+    }
+    
+    return [stateHook.state, setState];
+}
+
+
 const React = {
     update,
     render,
     createElement,
+    useState,
 }
 
 export default React;
