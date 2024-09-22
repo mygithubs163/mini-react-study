@@ -1,7 +1,7 @@
 import React from "./React.js"
 
 const ReactDOM = {
-    creatRoot(container) {
+    createRoot(container) {
         return {
             render(el) {
                 React.render(el, container)

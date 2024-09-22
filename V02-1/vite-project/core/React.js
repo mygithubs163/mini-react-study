@@ -7,11 +7,10 @@ function createElement(type,props,...children){
         type,
         props:{
             ...props,
-            children:children.map(child =>
-                typeof child === 'object'
-                ? child
-                : createTextNode(child)
-            )
+            children:children.map(child =>{
+                const testNode  = typeof child === 'string' || typeof child === 'number'
+                return testNode ? createTextNode(child) : child ;
+            })
         }
     }
 }
@@ -66,8 +65,15 @@ function commitRoot(){
 }
 
 function commitWork(fiber){
-    if(!fiber) return;
-    fiber.parent.dom.append(fiber.dom);
+    if (!fiber) return;
+    let fiberParent = fiber.parent;
+    while (!fiberParent.dom) {
+        fiberParent = fiberParent.parent;
+    }
+
+    if (fiber.dom) {
+        fiberParent.dom.append(fiber.dom)
+    }
     commitWork(fiber.child);
     commitWork(fiber.sibling);
 }
@@ -96,50 +102,87 @@ function initChildren(fiber, children) {
         props: child.props,
         child: null,
         parent: fiber,
-        silbling: null, 
+        sibling: null, 
         dom: null,
     }
 
     if(index  === 0) {
         fiber.child = newFiber;
     } else {
-        prevChild.silbling  = newFiber;
+        prevChild.sibling  = newFiber;
     }
 
     prevChild = newFiber;
  })
 }
 
-function performUnitOfWork(fiber){
-    const isFunctionComponent = typeof fiber.type === 'function';
-    if(!isFunctionComponent){
-        if(!fiber.dom) {
-            // 创建dom
-            const dom = (fiber.dom = createDom(fiber.type));
-            // 统一使用roota提交
-            // fiber.parent.dom.append(dom);
-    
-            // 处理props
-            // 设置id和class
-            updateProps(dom, fiber.props)
-        }
+//函数组件
+function updateFunctionComponent(fiber) {
+    const children = [fiber.type(fiber.props)];
+    initChildren(fiber, children);
+}
+
+//非函数组件
+function updateHostComponent(fiber) {
+    if(!fiber.dom) {
+        // 创建dom
+        const dom = (fiber.dom = createDom(fiber.type));
+        // 统一使用roota提交
+        // fiber.parent.dom.append(dom);
+
+        // 处理props
+        // 设置id和class
+        updateProps(dom, fiber.props)
     }
 
-    const children = isFunctionComponent ? [fiber.type()]: fiber.props.children;
+    const children = fiber.props.children;
+    initChildren(fiber, children);
+}
+
+function performUnitOfWork(fiber){
+    const isFunctionComponent = typeof fiber.type === 'function';
+    if (isFunctionComponent) {
+        updateFunctionComponent(fiber);
+    } else {
+        updateHostComponent(fiber);
+    }
+//     if(!isFunctionComponent){
+//         if(!fiber.dom) {
+//             // 创建dom
+//             const dom = (fiber.dom = createDom(fiber.type));
+//             // 统一使用roota提交
+//             // fiber.parent.dom.append(dom);
     
-    // 处理节点之间的关系
-   initChildren(fiber, children);
+//             // 处理props
+//             // 设置id和class
+//             updateProps(dom, fiber.props)
+//         }
+//     }
+
+//     const children = isFunctionComponent ? [fiber.type(fiber.props)]: fiber.props.children;
+    
+//     // 处理节点之间的关系
+//    initChildren(fiber, children);
 
     // 返回下一个要执行的任务
     if(fiber.child) {
         return fiber.child;
     }
+    console.log(fiber)
+    // if(fiber.sibling){
+    //     return fiber.sibling;
+    // }
 
-    if(fiber.silbling){
-        return fiber.silbling;
+    // return fiber.parent?.sibling;
+
+    // 循环去找父级
+    let nextFiber = fiber;
+    while(nextFiber){
+        if(nextFiber.sibling){
+            return nextFiber.sibling;
+        }
+        nextFiber = nextFiber.parent;
     }
-
-    return fiber.parent?.silbling;
 
 }
 

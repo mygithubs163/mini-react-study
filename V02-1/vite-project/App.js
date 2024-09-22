@@ -6,11 +6,11 @@
 // export default App;
 
 
-import React from './core/React.js'
-import ReactDOM from './core/ReactDom.js'
-import App from './src/App.jsx'
+// import React from './core/React.js'
+// import ReactDOM from './core/ReactDom.js'
+// import App from './App.jsx'
 
 
-ReactDOM.createRoot(document.querySelector('#root')).render(App)
+// ReactDOM.createRoot(document.querySelector('#root')).render(App);
 
-export default App;
+// export default App;
