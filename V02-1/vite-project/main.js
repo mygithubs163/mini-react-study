@@ -26,6 +26,6 @@
 
 import React from "./core/React.js";
 import ReactDOM from "./core/ReactDom.js";
-import App from "./App.jsx";
+import App from "./App.js";
 
 ReactDOM.creatRoot(document.querySelector('#root')).render(App);
