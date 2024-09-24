@@ -54,11 +54,11 @@ function workLoop(deadline){
         //执行dom
         nextWorkOfUnit = performUnitOfWork(nextWorkOfUnit);
         // console.log("nextWorkOfUnit", nextWorkOfUnit);
-
+        // 比较他们的type是否一致，这样就不会再去触发其他的更新
         if (wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
             nextWorkOfUnit = undefined
         }
-
+        // 表示当前帧剩余的时间，也可理解为留给任务的时间还有多少
         shouldYield = deadline.timeRemaining() < 1;
     }
     //只需要执行一次
@@ -77,6 +77,7 @@ function workLoop(deadline){
 
 // wipRoot会清空, currentRoot记录当前的最新的
 function commitRoot(){
+    // 去统一的处理需要删除的节点
     deletions.forEach(commitDeletion);
     commitWork(wipRoot.child);
     commitEffectHook();
@@ -152,7 +153,9 @@ function commitDeletion(fiber){
 
 function commitWork(fiber){
     if (!fiber) return;
-
+    // 在commitWork的时候，并没有添加DOM,原因是因为没有找到真实的DOM
+    // 去找到该Fiber节点的父节点，并一直向上遍历直到找到一个有真实DOM节点的父节点。
+    // 一旦找到了有真实DOM节点的父节点，就会将当前Fiber节点的DOM节点附加到父节点的DOM节点上。
     let fiberParent = fiber.parent;
     while (!fiberParent.dom) {
         fiberParent = fiberParent.parent;
@@ -222,66 +225,66 @@ function updateProps(dom, nextProps, prevProps){
 // 这里是判断的是否是函数，
 // 如果是函数就是函数组件，函数组件的话，我们是不需要去创建DOM的,并且我们是需要的children类型是数组,所以我们用[]去包裹一下,并且使用我们传入的children
 function reconcileChildren(fiber, children) {
-//  const children = fiber.props.children;
-//  console.log('fiber',fiber);
-//  存储旧节点
- let oldFiber = fiber.alternate?.child;
- let prevChild = null;
- children.forEach((child, index) => {
-    const isSameType = oldFiber && oldFiber.type === child.type;
+    //  const children = fiber.props.children;
+    //  console.log('fiber',fiber);
+    //  存储旧节点
+    let oldFiber = fiber.alternate?.child;
+    let prevChild = null;
+    children.forEach((child, index) => {
+        const isSameType = oldFiber && oldFiber.type === child.type;
 
-    let newFiber;
-    if (isSameType) {
-        // update
-        newFiber = {
-            type: child.type,
-            props: child.props,
-            child: null,
-            parent: fiber,
-            sibling: null,
-            dom: oldFiber.dom,
-            effectTag: 'update',
-            alternate: oldFiber,
-        };
-    } else {
-        // placement
-        // edge case child为ture的时候才去新增节点
-        if (child) {
+        let newFiber;
+        if (isSameType) {
+            // update
             newFiber = {
                 type: child.type,
                 props: child.props,
                 child: null,
                 parent: fiber,
-                sibling: null, 
-                dom: null,
-                effectTag: 'placement',
+                sibling: null,
+                dom: oldFiber.dom,
+                effectTag: 'update',
+                alternate: oldFiber, //用来存储旧节点
             };
-        } 
-        
-        // 添加到删除的节点里
-        if (oldFiber){
-            deletions.push(oldFiber);
+        } else {
+            // placement
+            // edge case child为ture的时候才去新增节点
+            if (child) {
+                newFiber = {
+                    type: child.type,
+                    props: child.props,
+                    child: null,
+                    parent: fiber,
+                    sibling: null, 
+                    dom: null,
+                    effectTag: 'placement',
+                };
+            } 
+            
+            // 添加到删除的节点里
+            if (oldFiber){
+                deletions.push(oldFiber);
+            }
         }
-    }
 
-    // if(oldFiber){
-    //     console.log('oldFiber',oldFiber,newFiber);
-    // }
+        // if(oldFiber){
+        //     console.log('oldFiber',oldFiber,newFiber);
+        // }
 
-    if (oldFiber) {
-        oldFiber = oldFiber.sibling;
-    }
+        if (oldFiber) {
+            oldFiber = oldFiber.sibling;
+        }
 
-    if(index === 0) {
-        fiber.child = newFiber;
-    } else {
-        prevChild.sibling  = newFiber;
-    }
-    // edge case newFiber是否存在就好了，存在的话，再去赋值prevChild
-    if (newFiber) {
-        prevChild = newFiber;
-    }
- })
+        if(index === 0) {
+            fiber.child = newFiber;
+        } else {
+            prevChild.sibling  = newFiber;
+        }
+        // edge case newFiber是否存在就好了，存在的话，再去赋值prevChild
+        if (newFiber) {
+            prevChild = newFiber;
+        }
+    })
 
     //如果还存在就删除掉
     //可能会存在多个孩子节点，所以需要使用while循环，且更新oldFiber的值
@@ -361,6 +364,8 @@ function performUnitOfWork(fiber){
 
     // return fiber.parent?.sibling;
 
+    // 当我们运用两个组件的时候,页面只渲染了一个
+    // 是因为在查找兄弟的时候，我们没有找到该组件的兄弟节点，所以返回错误
     // 循环去找父级
     let nextFiber = fiber;
     while(nextFiber){
